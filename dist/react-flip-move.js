@@ -74,6 +74,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	exports.convertToInt = convertToInt;
 	exports.convertAllToInt = convertAllToInt;
 	exports.whichTransitionEvent = whichTransitionEvent;
+	exports.translate = translate;
 	/**
 	 * React Flip Move
 	 * (c) 2016-present Joshua Comeau
@@ -117,6 +118,27 @@ return /******/ (function(modules) { // webpackBootstrap
 	  }
 	}
 
+	function translate(node, x, y) {
+	  // Credit to http://stackoverflow.com/users/1336843/bali-balo for the matrix regex.
+	  if (window.getComputedStyle) {
+	    node = window.getComputedStyle(node);
+	    var transform = node.transform || node.webkitTransform || node.mozTransform || node.oTransform;
+	    if (!transform || 0 === transform.length) return "translate3d(" + (x || 0) + "px, " + (y || 0) + "px, 0px)"; // hardware accelerated translate3d
+	    if (node = transform.match(/^matrix3d\((.+)\)$/)) {
+	      node = node[1].split(",");
+	      node[12] = (parseFloat(node[12]) || 0) + x;
+	      node[13] = (parseFloat(node[13]) || 0) + y;
+	      return "matrix(" + node.join(",") + ")";
+	    }
+	    if (node = transform.match(/^matrix\((.+)\)$/)) {
+	      node = node[1].split(",");
+	      node[4] = (parseFloat(node[4]) || 0) + x;
+	      node[5] = (parseFloat(node[5]) || 0) + y;
+	      return "matrix(" + node.join(",") + ")";
+	    }
+	  }
+	}
+
 /***/ },
 /* 2 */
 /***/ function(module, exports) {
@@ -128,6 +150,10 @@ return /******/ (function(modules) { // webpackBootstrap
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
+
+	Object.defineProperty(exports, "__esModule", {
+	  value: true
+	});
 
 	var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }();
 
@@ -150,10 +176,6 @@ return /******/ (function(modules) { // webpackBootstrap
 	             *   - If the two have moved, we use the FLIP technique to animate the
 	             *     transition between their positions.
 	             */
-
-	Object.defineProperty(exports, "__esModule", {
-	  value: true
-	});
 
 	var _react = __webpack_require__(2);
 
@@ -327,6 +349,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	      var staggerDelayBy = _props.staggerDelayBy;
 	      var easing = _props.easing;
 
+
 	      delay += n * staggerDelayBy;
 	      duration += n * staggerDurationBy;
 
@@ -348,8 +371,9 @@ return /******/ (function(modules) { // webpackBootstrap
 	      var dX = _getPositionDelta4[0];
 	      var dY = _getPositionDelta4[1];
 
+
 	      domNode.style.transition = 'transform 0ms';
-	      domNode.style.transform = 'translate(' + dX + 'px, ' + dY + 'px)';
+	      domNode.style.transform = (0, _helpers.translate)(domNode, dX, xY);
 
 	      // Sadly, this is the most browser-compatible way to do this I've found.
 	      // Essentially we need to set the initial styles outside of any request
@@ -428,13 +452,13 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	'use strict';
 
-	var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
-
-	var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
-
 	Object.defineProperty(exports, "__esModule", {
 	  value: true
 	});
+
+	var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
+
+	var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
 	var _react = __webpack_require__(2);
 
