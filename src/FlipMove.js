@@ -166,7 +166,7 @@ class FlipMove extends Component {
     const [ dX, dY ] = this.getPositionDelta(domNode, child.key);
 
     domNode.style.transition  = 'transform 0ms';
-    var originalTransform = domNode.style.transform.slice(0);
+    var originalTransform = domNode.style.transform.slice(0) || '';
     domNode.style.transform = translate(domNode, dX, dY);
     // Sadly, this is the most browser-compatible way to do this I've found.
     // Essentially we need to set the initial styles outside of any request
@@ -189,7 +189,7 @@ class FlipMove extends Component {
     // dependent variables `child` and `domNode`)
     const transitionEndHandler = () => {
       // Remove the 'transition' inline style we added. This is cleanup.
-      domNode.style.transition = '';
+      domNode.style.transform = originalTransform;
 
       // Trigger any applicable onFinish/onFinishAll hooks
       this.triggerFinishHooks(child, domNode);
