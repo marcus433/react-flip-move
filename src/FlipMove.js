@@ -166,8 +166,8 @@ class FlipMove extends Component {
     const [ dX, dY ] = this.getPositionDelta(domNode, child.key);
 
     domNode.style.transition  = 'transform 0ms';
-    domNode.style.transform   = translate(domNode, dX, xY);
-
+    var originalTransform = domNode.style.transform.slice(0)
+    domNode.style.transform   = translate(domNode, dX, dY);
     // Sadly, this is the most browser-compatible way to do this I've found.
     // Essentially we need to set the initial styles outside of any request
     // callbacks to avoid batching them. Then, a frame needs to pass with
@@ -176,7 +176,7 @@ class FlipMove extends Component {
     requestAnimationFrame( () => {
       requestAnimationFrame( () => {
         domNode.style.transition = this.createTransitionString(n);
-        domNode.style.transform  = '';
+        domNode.style.transform  = originalTransform;
       });
     });
 

@@ -126,14 +126,14 @@ return /******/ (function(modules) { // webpackBootstrap
 	    if (!transform || 0 === transform.length) return "translate3d(" + (x || 0) + "px, " + (y || 0) + "px, 0px)"; // hardware accelerated translate3d
 	    if (node = transform.match(/^matrix3d\((.+)\)$/)) {
 	      node = node[1].split(",");
-	      node[12] = (parseFloat(node[12]) || 0) + x;
-	      node[13] = (parseFloat(node[13]) || 0) + y;
+	      node[12] = Math.abs((parseFloat(node[12]) || 0) + x);
+	      node[13] = Math.abs((parseFloat(node[13]) || 0) + y);
 	      return "matrix(" + node.join(",") + ")";
 	    }
 	    if (node = transform.match(/^matrix\((.+)\)$/)) {
 	      node = node[1].split(",");
-	      node[4] = (parseFloat(node[4]) || 0) + x;
-	      node[5] = (parseFloat(node[5]) || 0) + y;
+	      node[4] = Math.abs((parseFloat(node[4]) || 0) + x);
+	      node[5] = Math.abs((parseFloat(node[5]) || 0) + y);
 	      return "matrix(" + node.join(",") + ")";
 	    }
 	  }
@@ -373,8 +373,10 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 	      domNode.style.transition = 'transform 0ms';
-	      domNode.style.transform = (0, _helpers.translate)(domNode, dX, xY);
-
+	      var originalTransform = domNode.style.transform.slice(0);
+	      domNode.style.transform = (0, _helpers.translate)(domNode, dX, dY);
+	      console.log(dX, dY);
+	      console.log((0, _helpers.translate)(domNode, dX, dY));
 	      // Sadly, this is the most browser-compatible way to do this I've found.
 	      // Essentially we need to set the initial styles outside of any request
 	      // callbacks to avoid batching them. Then, a frame needs to pass with
@@ -383,7 +385,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	      requestAnimationFrame(function () {
 	        requestAnimationFrame(function () {
 	          domNode.style.transition = _this3.createTransitionString(n);
-	          domNode.style.transform = '';
+	          domNode.style.transform = originalTransform;
 	        });
 	      });
 
