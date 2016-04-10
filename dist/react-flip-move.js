@@ -373,10 +373,8 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 	      domNode.style.transition = 'transform 0ms';
-	      var originalTransform = domNode.style.transform.slice(0);
+	      var originalTransform = domNode.style.transform.slice(0) || '';
 	      domNode.style.transform = (0, _helpers.translate)(domNode, dX, dY);
-	      console.log(dX, dY);
-	      console.log((0, _helpers.translate)(domNode, dX, dY));
 	      // Sadly, this is the most browser-compatible way to do this I've found.
 	      // Essentially we need to set the initial styles outside of any request
 	      // callbacks to avoid batching them. Then, a frame needs to pass with
@@ -398,7 +396,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	      // dependent variables `child` and `domNode`)
 	      var transitionEndHandler = function transitionEndHandler() {
 	        // Remove the 'transition' inline style we added. This is cleanup.
-	        domNode.style.transition = '';
+	        domNode.style.transform = originalTransform;
 
 	        // Trigger any applicable onFinish/onFinishAll hooks
 	        _this3.triggerFinishHooks(child, domNode);
