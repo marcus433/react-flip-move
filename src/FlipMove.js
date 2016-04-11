@@ -17,7 +17,7 @@
 import React, { Component, PropTypes } from 'react';
 import ReactDOM from 'react-dom';
 
-import { whichTransitionEvent, filterNewItems } from './helpers.js';
+import { whichTransitionEvent, filterNewItems, applyStylesToDOMNode, translate } from './helpers.js';
 import propConverter from './prop-converter';
 
 const transitionEnd = whichTransitionEvent();
@@ -27,13 +27,19 @@ const transitionEnd = whichTransitionEvent();
 class FlipMove extends Component {
   constructor(props) {
     super(props);
-    this.items = this.props.children;
-    this.boundingBoxes = [];
+    this.boundingBoxes = {};
 
     this.parentElement  = null;
     this.parentBox      = null;
 
-    this.animateTransform       = this.animateTransform.bind(this);
+    this.doesChildNeedToBeAnimated  = this.doesChildNeedToBeAnimated.bind(this);
+
+    // Copy props.children into state.
+    // This may seem like an anti-pattern, but there's a very good, complicated
+    // reason for doing so; sometimes, when the props change, we want to "delay"
+    // their render (eg. when the new props don't contain a previous item, we
+    // want to keep that item in the DOM while we animate its exit).
+    this.state = { children: this.props.children };
 
     // Keep track of remaining animations so we know when to fire the
     // all-finished callback, and clean up after ourselves.
@@ -42,11 +48,36 @@ class FlipMove extends Component {
       elements: [],
       domNodes: []
     };
+
+    // When leaving items, we apply some over-ride styles to them (position,
+    // top, left). If the item is passed in through props BEFORE the item has
+    // finished leaving, its style will be wrong. So, to prevent any weirdness,
+    // we store the "original" styles here so they can be applied on re-entry.
+    // A crazy edge case, I know.
+    this.originalDomStyles = {};
   }
+
 
   componentDidMount() {
     this.parentElement = ReactDOM.findDOMNode(this);
   }
+
+
+  componentDidUpdate(previousProps) {
+    const childKeys     = this.props.children.map( c => c.key).join('');
+    const prevChildKeys = previousProps.children.map( c => c.key).join('');
+
+    // If the children have been re-arranged or added/removed, trigger the
+    // main FLIP animation.
+    //
+    // This check is required so that we don't trigger a re-animation when the
+    // `onFinishAll` handler is called, at the end of the animation, to remove
+    // exited nodes.
+    if ( childKeys !== prevChildKeys ) {
+      this.calculateAndAnimateChildren();
+    }
+  }
+
 
   // When the component is handed new props, we need to figure out the "resting"
   // position of all currently-rendered DOM nodes. We store that data in
@@ -57,110 +88,194 @@ class FlipMove extends Component {
     const parentBox = this.parentElement.getBoundingClientRect();
 
     // Get the bounding boxes of all currently-rendered, keyed children.
-    this.boundingBoxes = this.props.children.reduce( (boxes, child) => {
+    const newBoundingBoxes = this.props.children.reduce( (boxes, child) => {
       // It is possible that a child does not have a `key` property;
       // Ignore these children, they don't need to be moved.
       if ( !child.key ) return boxes;
-
-      // Also, if this node is just entering, it isn't in the DOM yet.
-      if ( child.entering ) return boxes;
 
       const domNode     = ReactDOM.findDOMNode( this.refs[child.key] );
 
       const childBox    = domNode.getBoundingClientRect();
       const relativeBox = {
-        'top':  childBox['top']  - parentBox['top'],
-        'left': childBox['left'] - parentBox['left']
+        'top':    childBox['top']  - parentBox['top'],
+        'left':   childBox['left'] - parentBox['left'],
+        'right':  childBox['right'] - parentBox['right'],
+        'bottom': childBox['bottom'] - parentBox['bottom']
       };
 
       return { ...boxes, [child.key]: relativeBox };
     }, {});
 
+    this.boundingBoxes = {
+      ...this.boundingBoxes,
+      ...newBoundingBoxes
+    }
+
     // Create our custom list of items.
     // We use this list instead of props so that we can mutate it.
     // We're keeping just-deleted nodes for a bit longer, as well as adding a
     // flag to just-created nodes, so we know they need to be entered.
-    this.items = this.prepareNextItems(nextProps.children);
+    this.setState({
+      children: this.prepareNextChildren(nextProps.children)
+    });
   }
 
-  prepareNextItems(nextItems) {
-    // Start by marking items that are about to be removed as 'exiting'
-    let updatedItems = this.items.map( item => {
-      const isExiting = !nextItems.find( nextItem => (nextItem.key === item.key) );
 
-      return {
-        ...item,
-        exiting: isExiting
-      };
+  prepareNextChildren(nextChildren) {
+    // We want to:
+    //   - Mark all new children as `entering`
+    //   - Pull in previous children that aren't in nextChildren, and mark them
+    //     as `leaving`
+    //   - Preserve the nextChildren list order, with leaving children in their
+    //     appropriate places.
+    //
+
+    // Start by marking new children as 'entering'
+    let updatedChildren = nextChildren.map( nextChild => {
+      const child = this.state.children.find( ({key}) => key === nextChild.key );
+
+      // If the current child did exist, but it was in the middle of leaving,
+      // we want to treat it as though it's entering
+      const isEntering = !child || child.leaving;
+
+      return { ...nextChild, entering: isEntering }
     });
 
-    // Add in any new items, marking them as 'entering'.
-    let enteringItems = filterNewItems(this.items, nextItems).map( item => {
-      item.entering = true;
-      return item;
+    // This is tricky. We want to keep the nextChildren's ordering, but with
+    // any just-removed items maintaining their original position.
+    // eg.
+    //   this.state.children  = [ 1, 2, 3, 4 ]
+    //   nextChildren         = [ 3, 1 ]
+    //
+    // In this example, we've removed the '2' & '4'
+    // We want to end up with:  [ 2, 3, 1, 4 ]
+    //
+    // To accomplish that, we'll iterate through this.state.children. whenever
+    // we find a match, we'll append our `leaving` flag to it, and insert it
+    // into the nextChildren in its ORIGINAL position. Note that, as we keep
+    // inserting old items into the new list, the "original" position will
+    // keep incrementing.
+    let numOfChildrenLeaving = 0;
+    this.state.children.forEach( (child, index) => {
+      const isLeaving = !nextChildren.find( ({key}) => key === child.key );
+
+      if ( !isLeaving ) return;
+
+      let nextChild = { ...child, leaving: true };
+      let nextChildIndex = index + numOfChildrenLeaving;
+
+      updatedChildren.splice(nextChildIndex, 0, nextChild);
+      numOfChildrenLeaving++;
     });
 
-    // Concatenate the updated items with the newly-entering ones.
-    return updatedItems.concat(enteringItems);
+    return updatedChildren;
   }
 
-  componentDidUpdate(previousProps) {
+
+  calculateAndAnimateChildren() {
     // Re-calculate the bounding boxes of tracked elements.
     // Compare to the bounding boxes stored in state.
     // Animate as required =)
 
     // If we've decided to disable animations, we don't want to run any of this!
-    if ( this.animationNotRequired() ) return;
+    if ( this.isAnimationDisabled() ) return;
 
     this.parentBox = this.parentElement.getBoundingClientRect();
 
-    // we need to make all exiting nodes "invisible" to the layout calculations
+    // we need to make all leaving nodes "invisible" to the layout calculations
     // that will take place in the next step (this.animateTransform).
-    const exitingItems = this.items.filter( ({exiting}) => exiting );
-    exitingItems.forEach( exitingItem => {
-      const domNode = ReactDOM.findDOMNode( this.refs[exitingItem.key] );
-      domNode.style.position = 'fixed';
-      console.log(domNode, domNode.style.position);
-    });
+    if ( this.props.leaveAnimation ) {
+      const leavingChildren = this.state.children.filter( ({leaving}) => leaving );
+
+      leavingChildren.forEach( leavingChild => {
+        const domNode = ReactDOM.findDOMNode( this.refs[leavingChild.key] );
+        const leavingBoundingBox = this.boundingBoxes[leavingChild.key];
+
+        // We need to take the items out of the "flow" of the document, so that
+        // its siblings can move to take its place.
+        // By setting its position to absolute and positioning it where it is,
+        // we can make it leave in-place while its siblings can calculate where
+        // they need to go.
+        // If, however, the 'leave' is interrupted and they're forced to re-enter,
+        // we want to undo this change, and the only way to do that is to preserve
+        // their current styles.
+        this.originalDomStyles[leavingChild.key] = {
+          position:  domNode.style.position,
+          top:       domNode.style.top,
+          left:      domNode.style.left,
+          right:     domNode.style.right,
+          translate: domNode.style.transform
+        };
+
+        // For this to work, we have to offset any given `margin`.
+        let computed = { ...window.getComputedStyle(domNode) };
+
+        ['marginTop', 'marginLeft', 'marginRight'].forEach( margin => {
+          computed[margin] = Number( computed[margin].replace('px', '') )
+        });
+
+        domNode.style.position  = 'absolute';
+        domNode.style.top   = leavingBoundingBox.top - computed.marginTop + 'px';
+        domNode.style.left  = leavingBoundingBox.left - computed.marginLeft + 'px';
+        domNode.style.right = leavingBoundingBox.right + computed.marginRight + 'px';
+      });
+    }
+
+    const dynamicChildren = this.state.children.filter(
+      this.doesChildNeedToBeAnimated
+    );
 
     // Next, we need to do all our new layout calculations, and get our new
     // styles for each item. We'll organize it as an object where the keys
     // are the item key, and the value is their new 'style'.
-    this.domStyles = this.items.reduce( (memo, item) => {
-      let style = {};
-
-      if ( this.childNeedsToBeAnimated(item) ) {
-        // If the child has entered, its transition will be scale-based
-        // TODO: Support presets (opacity, scaleX, scaleY)
-        if ( item.entering ) {
-          style.transition  = 'transform 0ms';
-          style.transform   = 'scaleY(0)';
-        } else if ( item.exiting ) {
-          style.transition  = 'transform 0ms';
-          style.transform   = 'scaleY(1)';
-        } else {
-          let domNode       = ReactDOM.findDOMNode( this.refs[item.key] );
-          const [ dX, dY ]  = this.getPositionDelta(domNode, item.key);
-          style.transition  = 'transform 0ms';
-          style.transform   = `translate(${dX}px, ${dY}px)`;
-        }
-      }
-
-      memo[item.key] = style;
+    this.domStyles = dynamicChildren.reduce( (memo, child) => {
+      memo[child.key] = this.computeInitialStyles(child);
       return memo;
-
     }, {});
 
-    this.items.forEach(this.animateTransform);
+    // Now that the styles are computed, animate each child individually.
+    dynamicChildren.forEach( (child, index) => {
+      this.addChildToAnimationsList(child);
+      this.animateTransform(child, index);
+    });
   }
 
-  animationNotRequired() {
-    // If the component is explicitly passed a `disableAnimations` flag,
+  computeInitialStyles(child) {
+    let style = { transition: '0ms' };
+
+    if ( child.entering ) {
+      if ( this.props.enterAnimation ) {
+        let original = this.originalDomStyles[child.key] || {};
+        style = {
+          ...style,
+          ...this.props.enterAnimation.from,
+          ...original
+        };
+      }
+    } else if ( child.leaving ) {
+      if ( this.props.leaveAnimation ) {
+        style = {
+          ...style,
+          ...this.props.leaveAnimation.from
+        }
+      }
+    } else {
+      let domNode       = ReactDOM.findDOMNode( this.refs[child.key] );
+      const [ dX, dY ]  = this.getPositionDelta(domNode, child.key);
+      console.log(translate(domNode, dX, dY));
+      style.transform   = translate(domNode, dX, dY);
+    }
+
+    return style;
+  }
+
+  isAnimationDisabled() {
+    // If the component is explicitly passed a `disableAllAnimations` flag,
     // we can skip this whole process. Similarly, if all of the numbers have
     // been set to 0, there is no point in trying to animate; doing so would
     // only cause a flicker (and the intent is probably to disable animations)
     return (
-      this.props.disableAnimations ||
+      this.props.disableAllAnimations ||
       this.props.duration === 0 &&
       this.props.delay === 0 &&
       this.props.staggerDurationBy === 0 &&
@@ -168,62 +283,47 @@ class FlipMove extends Component {
     )
   }
 
-  childNeedsToBeAnimated(child) {
-    // We only want to animate if the child is entering / exiting, OR:
-    //  * The child has an associated key (immovable children are supported)
-    //  * The child still exists in the DOM.
-    //  * The child isn't brand new.
-    //  * The child has moved
-    //
-    // Tackle the first three first, since they're very easy to determine.
-    if ( !child.entering && !child.exiting ) {
-      const isImmovable   = !child.key;
-      const isBrandNew    = !this.boundingBoxes[child.key];
-      const isDestroyed   = !this.refs[child.key];
-      if ( isImmovable || isBrandNew || isDestroyed ) return;
 
-      // Figuring out if the component has moved is a bit more work.
-      const domNode       = ReactDOM.findDOMNode( this.refs[child.key] );
-      const [ dX, dY ]    = this.getPositionDelta( domNode, child.key );
-      const isStationary  = dX === 0 && dY === 0;
+  doesChildNeedToBeAnimated(child) {
+    // If the child doesn't have a key, it's an immovable child (one that we
+    // do not want to do flip stuff to.)
+    if ( !child.key ) return;
 
-      // Stationary children don't need to be animated!
-      if ( isStationary ) return;
-
-      this.remainingAnimations++;
-      this.childrenToAnimate.elements.push(child);
-      this.childrenToAnimate.domNodes.push(domNode);
+    if (
+      ( child.entering && this.props.enterAnimation ) ||
+      ( child.leaving  && this.props.leaveAnimation )
+    ) {
+      return true;
     }
 
-    return true;
+    // Otherwise, we only want to animate it if the child's position on-screen
+    // has changed. Let's figure that out.
+    const domNode     = ReactDOM.findDOMNode( this.refs[child.key] );
+    const [ dX, dY ]  = this.getPositionDelta( domNode, child.key );
+
+    return dX !== 0 || dY !== 0;
   }
 
 
-  // THe problem is, all items are calculated sequentially.
-  // If, say, the first item is being removed, it has already had its 'fixed'
-  // position removed by the time the next item calculates its boundingBox.
-  // The solution is to do it all as one animation.
-  // Set position to fixed on all removed nodes,
-  // calculate the new bounding box for all nodes,
-  // trigger all animations.
+  addChildToAnimationsList(child) {
+    // Add this child to the animations array. This is used for working out
+    // when all children have finished animated (so that the onFinishAll
+    // callback can be fired, and so we can do some cleanup).
+    const domNode = ReactDOM.findDOMNode( this.refs[child.key] );
+
+    this.remainingAnimations++;
+    this.childrenToAnimate.elements.push(child);
+    this.childrenToAnimate.domNodes.push(domNode);
+  }
 
 
-  animateTransform(item, n) {
-    let domNode = ReactDOM.findDOMNode( this.refs[item.key] );
-    const styles = this.domStyles[item.key]
-
+  animateTransform(child, n) {
+    let domNode = ReactDOM.findDOMNode( this.refs[child.key] );
+    let original = this.originalDomStyles[child.key] || {};
+    const styles = this.domStyles[child.key];
 
     // Apply the relevant style for this DOM node
-    // Can't just do an object merge because domNode.styles is no regular object.
-    // Need to do it this way for the engine to fire its `set` listeners.
-    Object.keys(styles).forEach( key => {
-      domNode.style[key] = styles[key];
-    });
-
-    // If this node is exiting, remove the 'position:fixed'.
-    // if ( item.exiting ) {
-    //   domNode.style.position = '';
-    // }
+    applyStylesToDOMNode(domNode, styles);
 
     // Sadly, this is the most browser-compatible way to do this I've found.
     // Essentially we need to set the initial styles outside of any request
@@ -232,27 +332,45 @@ class FlipMove extends Component {
     // our final styles to perform the animation.
     requestAnimationFrame( () => {
       requestAnimationFrame( () => {
-        domNode.style.transition = this.createTransitionString(n);
-        domNode.style.transform  = item.exiting ? 'scaleY(0)' : '';
+        let styles = {
+          transition: this.createTransitionString(n),
+          transform: original.transform || '',
+          opacity: ''
+        }
+
+        if ( child.entering && this.props.enterAnimation ) {
+          styles = {
+            ...styles,
+            ...this.props.enterAnimation.to
+          };
+        } else if ( child.leaving && this.props.leaveAnimation ) {
+          styles = {
+            ...styles,
+            ...this.props.leaveAnimation.to
+          };
+        }
+
+        applyStylesToDOMNode(domNode, styles);
       });
     });
 
     // Trigger the onStart callback immediately.
-    if ( this.props.onStart ) this.props.onStart(item, domNode);
+    if ( this.props.onStart ) this.props.onStart(child, domNode);
 
     // The onFinish callback needs to be bound to the transitionEnd event.
     // We also need to unbind it when the transition completes, so this ugly
     // inline function is required (we need it here so it closes over
-    // dependent variables `item` and `domNode`)
+    // dependent variables `child` and `domNode`)
     const transitionEndHandler = () => {
       // Remove the 'transition' inline style we added. This is cleanup.
       domNode.style.transition = '';
 
       // Trigger any applicable onFinish/onFinishAll hooks
-      this.triggerFinishHooks(item, domNode);
+      this.triggerFinishHooks(child, domNode);
 
       domNode.removeEventListener(transitionEnd, transitionEndHandler)
     };
+
     domNode.addEventListener(transitionEnd, transitionEndHandler);
   }
 
@@ -271,13 +389,15 @@ class FlipMove extends Component {
     ];
   }
 
-  createTransitionString(n) {
+  createTransitionString(n, props=['transform', 'opacity']) {
     let { duration, staggerDurationBy, delay, staggerDelayBy, easing } = this.props;
 
     delay     += n * staggerDelayBy;
     duration  += n * staggerDurationBy;
 
-    return `transform ${duration}ms ${easing} ${delay}ms`;
+    return props
+      .map( prop => `${prop} ${duration}ms ${easing} ${delay}ms`)
+      .join(', ');
   }
 
 
@@ -300,22 +420,39 @@ class FlipMove extends Component {
         this.childrenToAnimate.elements = [];
         this.childrenToAnimate.domNodes = [];
 
-        // TODO: Cleanup! Remove exited items from the DOM, and set all
-        // `entering` flags to false.
+        const nextChildren = this.state.children
+          .filter( ({leaving}) => !leaving )
+          .map( item => {
+            item.entering = false;
+            return item;
+          });
+
+        this.originalDomStyles = {}
+
+        this.setState({ children: nextChildren });
       }
     }
   }
 
   childrenWithRefs() {
-    return this.items.map( child => {
+    return this.state.children.map( child => {
       return React.cloneElement(child, { ref: child.key });
     });
   }
 
+  // MOVE this.items into this.state.children.
+  // THat way, it will re-render with the right kids, without forceUpdate.
+  // Will unify all our language as well.
+  // We do want the component to render whenever the items change; we'll need
+  // to do some poking around to see how this works with interrupted animations.
+
   render() {
     return React.createElement(
       this.props.typeName,
-      { className: this.props.className },
+      {
+        className: this.props.className,
+        style: { position: 'relative' }
+      },
       this.childrenWithRefs()
     );
   }
