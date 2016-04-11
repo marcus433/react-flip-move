@@ -1,8 +1,11 @@
 React Flip Move
 =========
 
-[![build status](https://travis-ci.org/joshwcomeau/react-flip-move.svg)](https://travis-ci.org/joshwcomeau/react-flip-move)
+[![build status](https://travis-ci.org/joshwcomeau/react-flip-move.svg?branch=master)](https://travis-ci.org/joshwcomeau/react-flip-move)
 [![npm version](https://img.shields.io/npm/v/react-flip-move.svg)](https://www.npmjs.com/package/react-flip-move)
+[![npm monthly downloads](https://img.shields.io/npm/dm/react-flip-move.svg)](https://www.npmjs.com/package/react-flip-move)
+
+
 
 This module was built to tackle the common but arduous problem of animating a list of items when the list's order changes.
 
@@ -37,7 +40,7 @@ UMD builds are also available, in `/dist`.
 
 Flip Move was inspired by Ryan Florence's awesome <a href="https://github.com/ryanflorence/react-magic-move" target="_blank">_Magic Move_</a>, and offers:
 
-  * Full compatibility with React 0.14+. Will be maintained.
+  * Full compatibility with React 0.13, 0.14, and 15-rc2. Will be maintained.
 
   * Exclusive use of hardware-accelerated CSS properties (`transform: translate`) instead of positioning properties (`top`, `left`). <a href="https://aerotwist.com/blog/pixels-are-expensive/" target="_blank">_Read why this matters_</a>.
 
