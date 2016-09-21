@@ -1,6 +1,6 @@
 {
   "name": "react-flip-move",
-  "version": "1.4.0",
+  "version": "2.5.0",
   "description": "Effortless animation between DOM changes (eg. list reordering) using the FLIP technique.",
   "main": "lib/index.js",
   "files": [
@@ -36,10 +36,11 @@
     "web-animations"
   ],
   "peerDependencies": {
-    "react": "0.14.x || ^15.0.0-beta.1",
-    "react-dom": "0.14.x || ^15.0.0-beta.1"
+    "react": "0.13.x || 0.14.x || 15.x.x",
+    "react-dom": "0.13.x || 0.14.x || 15.x.x"
   },
   "devDependencies": {
+    "@kadira/storybook": "^1.19.0",
     "babel": "^6.1.18",
     "babel-cli": "^6.2.0",
     "babel-core": "^6.2.1",
@@ -52,6 +53,7 @@
     "babel-preset-react": "^6.3.13",
     "babel-preset-stage-0": "^6.1.18",
     "chai": "^3.5.0",
+    "css-loader": "^0.23.1",
     "eslint": "^1.10.3",
     "eslint-config-airbnb": "^3.1.0",
     "karma": "^0.13.19",
@@ -59,16 +61,20 @@
     "karma-chrome-launcher": "^0.2.2",
     "karma-mocha": "^0.2.1",
     "karma-sinon": "^1.0.4",
-    "karma-sinon-chai": "^1.1.0",
+    "karma-sinon-chai": "1.1.0",
     "karma-sourcemap-loader": "^0.3.7",
     "karma-webpack": "^1.7.0",
     "lodash": "^4.3.0",
     "mocha": "^2.4.5",
-    "react": "^0.14.3",
-    "react-addons-test-utils": "^0.14.7",
-    "react-dom": "^0.14.3",
+    "react": "^15.2.1",
+    "react-addons-test-utils": "^15.0.0",
+    "react-dom": "^15.0.0",
     "sinon": "^1.17.3",
     "sinon-chai": "^2.8.0",
+    "style-loader": "^0.13.1",
     "webpack": "^1.12.11"
+  },
+  "dependencies": {
+    "lodash.omit": "^4.3.0"
   }
 }
