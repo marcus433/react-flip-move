@@ -174,6 +174,9 @@ return /******/ (function(modules) { // webpackBootstrap
 	             *     transition between their positions.
 	             */
 
+	// TODO: why does personal fly back, it should mvoe smoothly. & with refs
+
+
 	var _react = __webpack_require__(2);
 
 	var _react2 = _interopRequireDefault(_react);
@@ -281,7 +284,6 @@ return /******/ (function(modules) { // webpackBootstrap
 	      });
 
 	      return updatedChildren;
-	      //return nextChildren;
 	    }
 	  }, {
 	    key: 'calculateAndAnimateChildren',
@@ -315,13 +317,13 @@ return /******/ (function(modules) { // webpackBootstrap
 	      if (child.entering) {
 	        if (this.props.enterAnimation) {
 	          style = _extends({}, style, this.props.enterAnimation.from, {
-	            transform: 'translate3d(0px, ' + 90 * child.props.item.idx + 'px, 0px)'
+	            transform: 'translate3d(0px, ' + 90 * child.props.item.idx + 'px, 0px)' + ' ' + (this.props.enterAnimation.from.tranform || '')
 	          });
 	        }
 	      } else if (child.leaving) {
 	        if (this.props.leaveAnimation) {
 	          style = _extends({}, style, this.props.leaveAnimation.from, {
-	            transform: 'translate3d(0px, ' + 90 * child.props.item.idx + 'px, 0px)'
+	            transform: 'translate3d(0px, ' + 90 * child.props.item.idx + 'px, 0px)' + ' ' + (this.props.leaveAnimation.from.tranform || '')
 	          });
 	        }
 	      } else {
@@ -391,17 +393,17 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	      if (this.props.onStart) this.props.onStart(child, domNode);
 
-	      var transitionEndHandler = function transitionEndHandler(ev) {
-	        if (ev.target !== domNode) return;
-
-	        domNode.style.transition = '';
-
-	        _this4.triggerFinishHooks(child, domNode);
-
-	        domNode.removeEventListener(transitionEnd, transitionEndHandler);
+	      /*const transitionEndHandler = (ev) => {
+	        if ( ev.target !== domNode ) return;
+	         domNode.style.transition = '';
+	         this.triggerFinishHooks(child, domNode);
+	         domNode.removeEventListener(transitionEnd, transitionEndHandler)
 	      };
-
-	      domNode.addEventListener(transitionEnd, transitionEndHandler);
+	       domNode.addEventListener(transitionEnd, transitionEndHandler);*/
+	      setTimeout(function () {
+	        domNode.style.transition = '';
+	        _this4.triggerFinishHooks(child, domNode);
+	      }, n * this.props.staggerDurationBy);
 	    }
 	  }, {
 	    key: 'getPositionTranslation',
@@ -440,7 +442,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	      // Reduce the number of children we need to animate by 1,
 	      // so that we can tell when all children have finished.
 	      this.remainingAnimations--;
-
+	      console.log(this.remainingAnimations);
 	      if (this.remainingAnimations === 0) {
 	        // Reset our variables for the next iteration
 	        this.childrenToAnimate.elements = [];

@@ -14,7 +14,7 @@
  *     transition between their positions.
  */
 
-// TODO: why does personal fly back, it should mvoe smoothly.
+// TODO: why does personal fly back, it should mvoe smoothly. & with refs
 import React, { Component, PropTypes } from 'react';
 import ReactDOM from 'react-dom';
 
@@ -25,7 +25,6 @@ import {
 } from './helpers.js';
 
 const transitionEnd = whichTransitionEvent();
-
 
 @propConverter
 class FlipMove extends Component {
@@ -128,7 +127,7 @@ class FlipMove extends Component {
         style = {
           ...style,
           ...this.props.enterAnimation.from,
-          transform: `translate3d(0px, ${90*child.props.item.idx}px, 0px)`
+          transform: `translate3d(0px, ${90*child.props.item.idx}px, 0px)` + ' ' + (this.props.enterAnimation.from.tranform || '')
         };
 
       }
@@ -137,7 +136,7 @@ class FlipMove extends Component {
         style = {
           ...style,
           ...this.props.leaveAnimation.from,
-          transform: `translate3d(0px, ${90*child.props.item.idx}px, 0px)`
+          transform: `translate3d(0px, ${90*child.props.item.idx}px, 0px)` + ' ' + (this.props.leaveAnimation.from.tranform || '')
         };
       }
     } else {
@@ -216,7 +215,7 @@ class FlipMove extends Component {
 
     if ( this.props.onStart ) this.props.onStart(child, domNode);
 
-    const transitionEndHandler = (ev) => {
+    /*const transitionEndHandler = (ev) => {
       if ( ev.target !== domNode ) return;
 
       domNode.style.transition = '';
@@ -226,13 +225,16 @@ class FlipMove extends Component {
       domNode.removeEventListener(transitionEnd, transitionEndHandler)
     };
 
-    domNode.addEventListener(transitionEnd, transitionEndHandler);
+    domNode.addEventListener(transitionEnd, transitionEndHandler);*/
+    setTimeout(() => {
+      domNode.style.transition = '';
+      this.triggerFinishHooks(child, domNode);
+    }, n * this.props.staggerDurationBy);
   }
 
   getPositionTranslation(child) {
     var oY  = this.oldIndices[child.key] || 0;
     var cY = 90*child.props.item.idx;
-    //var dY = oY - cY;
     return `translate3d(0px, ${cY}px, 0px)`;
   }
 
@@ -253,7 +255,7 @@ class FlipMove extends Component {
     // Reduce the number of children we need to animate by 1,
     // so that we can tell when all children have finished.
     this.remainingAnimations--;
-
+    console.log(this.remainingAnimations);
     if ( this.remainingAnimations === 0 ) {
       // Reset our variables for the next iteration
       this.childrenToAnimate.elements = [];
