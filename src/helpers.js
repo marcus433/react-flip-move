@@ -51,25 +51,3 @@ export function whichTransitionEvent() {
     if ( el.style[t] !== undefined ) return transitions[t];
   }
 }
-
-export function translate(node, x, y) {
-  // Credit to http://stackoverflow.com/users/1336843/bali-balo for the matrix regex.
-  if (window.getComputedStyle) {
-    node = window.getComputedStyle(node);
-    var transform = node.transform || node.webkitTransform || node.mozTransform || node.oTransform;
-    if (!transform || 0 === transform.length)
-      return "translate3d(" + (x || 0) + "px, " + (y || 0) + "px, 0px)"; // hardware accelerated translate3d
-    if (node = transform.match(/^matrix3d\((.+)\)$/)) {
-      node = node[1].split(",");
-      node[12] = Math.abs((parseFloat(node[12]) || 0) + x);
-      node[13] = Math.abs((parseFloat(node[13]) || 0) + y);
-      return "matrix(" + node.join(",") + ")";
-    }
-    if (node = transform.match(/^matrix\((.+)\)$/)) {
-      node = node[1].split(",");
-      node[4] = Math.abs((parseFloat(node[4]) || 0) + x);
-      node[5] = Math.abs((parseFloat(node[5]) || 0) + y);
-      return "matrix(" + node.join(",") + ")";
-    }
-  }
-}
