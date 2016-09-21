@@ -56,7 +56,7 @@ class FlipMove extends Component {
 
   componentWillReceiveProps(nextProps) {
     const newIndices = this.props.children.reduce( (boxes, child) => {
-      if ( !child.key ) return boxes;
+      if ( !child.key || child.props === undefined ) return boxes;
       return { ...boxes, [child.key]: 90*child.props.item.idx };
     }, {});
     this.oldIndices = {
@@ -101,6 +101,7 @@ class FlipMove extends Component {
     const dynamicChildren = this.state.children.filter(
       this.doesChildNeedToBeAnimated
     );
+
 
     this.domStyles = dynamicChildren.reduce( (memo, child) => {
       memo[child.key] = this.computeInitialStyles(child);
@@ -255,7 +256,6 @@ class FlipMove extends Component {
     // Reduce the number of children we need to animate by 1,
     // so that we can tell when all children have finished.
     this.remainingAnimations--;
-    console.log(this.remainingAnimations);
     if ( this.remainingAnimations === 0 ) {
       // Reset our variables for the next iteration
       this.childrenToAnimate.elements = [];

@@ -243,7 +243,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	    key: 'componentWillReceiveProps',
 	    value: function componentWillReceiveProps(nextProps) {
 	      var newIndices = this.props.children.reduce(function (boxes, child) {
-	        if (!child.key) return boxes;
+	        if (!child.key || child.props === undefined) return boxes;
 	        return _extends({}, boxes, _defineProperty({}, child.key, 90 * child.props.item.idx));
 	      }, {});
 	      this.oldIndices = _extends({}, this.oldIndices, newIndices);
@@ -410,7 +410,6 @@ return /******/ (function(modules) { // webpackBootstrap
 	    value: function getPositionTranslation(child) {
 	      var oY = this.oldIndices[child.key] || 0;
 	      var cY = 90 * child.props.item.idx;
-	      //var dY = oY - cY;
 	      return 'translate3d(0px, ' + cY + 'px, 0px)';
 	    }
 	  }, {
@@ -442,7 +441,6 @@ return /******/ (function(modules) { // webpackBootstrap
 	      // Reduce the number of children we need to animate by 1,
 	      // so that we can tell when all children have finished.
 	      this.remainingAnimations--;
-	      console.log(this.remainingAnimations);
 	      if (this.remainingAnimations === 0) {
 	        // Reset our variables for the next iteration
 	        this.childrenToAnimate.elements = [];
