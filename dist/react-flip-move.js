@@ -231,6 +231,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	    key: 'componentDidMount',
 	    value: function componentDidMount() {
 	      this.parentElement = _reactDom2.default.findDOMNode(this);
+	      this.calculateAndAnimateChildren();
 	    }
 	  }, {
 	    key: 'componentDidUpdate',
@@ -244,7 +245,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	    value: function componentWillReceiveProps(nextProps) {
 	      var newIndices = this.props.children.reduce(function (boxes, child) {
 	        if (!child.key || child.props === undefined) return boxes;
-	        return _extends({}, boxes, _defineProperty({}, child.key, 90 * child.props.item.idx));
+	        return _extends({}, boxes, _defineProperty({}, child.key, 90 * child.props.index));
 	      }, {});
 	      this.oldIndices = _extends({}, this.oldIndices, newIndices);
 	      this.setState({
@@ -317,13 +318,13 @@ return /******/ (function(modules) { // webpackBootstrap
 	      if (child.entering) {
 	        if (this.props.enterAnimation) {
 	          style = _extends({}, style, this.props.enterAnimation.from, {
-	            transform: 'translate3d(0px, ' + 90 * child.props.item.idx + 'px, 0px)' + ' ' + (this.props.enterAnimation.from.tranform || '')
+	            transform: 'translate3d(0px, ' + 90 * child.props.index + 'px, 0px)' + ' ' + (this.props.enterAnimation.from.tranform || '')
 	          });
 	        }
 	      } else if (child.leaving) {
 	        if (this.props.leaveAnimation) {
 	          style = _extends({}, style, this.props.leaveAnimation.from, {
-	            transform: 'translate3d(0px, ' + 90 * child.props.item.idx + 'px, 0px)' + ' ' + (this.props.leaveAnimation.from.tranform || '')
+	            transform: 'translate3d(0px, ' + 90 * child.props.index + 'px, 0px)' + ' ' + (this.props.leaveAnimation.from.tranform || '')
 	          });
 	        }
 	      } else {
@@ -393,23 +394,16 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	      if (this.props.onStart) this.props.onStart(child, domNode);
 
-	      /*const transitionEndHandler = (ev) => {
-	        if ( ev.target !== domNode ) return;
-	         domNode.style.transition = '';
-	         this.triggerFinishHooks(child, domNode);
-	         domNode.removeEventListener(transitionEnd, transitionEndHandler)
-	      };
-	       domNode.addEventListener(transitionEnd, transitionEndHandler);*/
 	      setTimeout(function () {
 	        domNode.style.transition = '';
 	        _this4.triggerFinishHooks(child, domNode);
-	      }, n * this.props.staggerDurationBy);
+	      }, n * this.props.staggerDurationBy + this.props.duration);
 	    }
 	  }, {
 	    key: 'getPositionTranslation',
 	    value: function getPositionTranslation(child) {
 	      var oY = this.oldIndices[child.key] || 0;
-	      var cY = 90 * child.props.item.idx;
+	      var cY = 90 * child.props.index;
 	      return 'translate3d(0px, ' + cY + 'px, 0px)';
 	    }
 	  }, {
