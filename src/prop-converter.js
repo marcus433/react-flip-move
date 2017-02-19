@@ -125,6 +125,7 @@ function propConverter(ComposedComponent) {
 
 
     static propTypes = {
+      offset: PropTypes.number,
       children:             PropTypes.oneOfType([
                               PropTypes.array,
                               PropTypes.object
@@ -167,6 +168,7 @@ function propConverter(ComposedComponent) {
 
 
     static defaultProps = {
+      offset:             0,
       easing:             'ease-in-out',
       duration:           350,
       delay:              0,

@@ -58,7 +58,7 @@ class FlipMove extends Component {
   componentWillReceiveProps(nextProps) {
     const newIndices = this.props.children.reduce( (boxes, child) => {
       if ( !child.key || child.props === undefined ) return boxes;
-      return { ...boxes, [child.key]: 90*child.props.index };
+      return { ...boxes, [child.key]: (90*child.props.index)+this.props.offset };
     }, {});
     this.oldIndices = {
       ...this.oldIndices,
@@ -129,7 +129,7 @@ class FlipMove extends Component {
         style = {
           ...style,
           ...this.props.enterAnimation.from,
-          transform: `translate3d(0px, ${90*child.props.index}px, 0px)` + ' ' + (this.props.enterAnimation.from.tranform || '')
+          transform: `translate3d(0px, ${(90*child.props.index)+this.props.offset}px, 0px)` + ' ' + (this.props.enterAnimation.from.tranform || '')
         };
       }
     } else if ( child.leaving ) {
@@ -137,7 +137,7 @@ class FlipMove extends Component {
         style = {
           ...style,
           ...this.props.leaveAnimation.from,
-          transform: `translate3d(0px, ${90*child.props.index}px, 0px)` + ' ' + (this.props.leaveAnimation.from.tranform || '')
+          transform: `translate3d(0px, ${(90*child.props.index)+this.props.offset}px, 0px)` + ' ' + (this.props.leaveAnimation.from.tranform || '')
         };
       }
     } else {
@@ -224,7 +224,7 @@ class FlipMove extends Component {
 
   getPositionTranslation(child) {
     var oY  = this.oldIndices[child.key] || 0;
-    var cY = 90*child.props.index;
+    var cY = (90*child.props.index)+this.props.offset;
     return `translate3d(0px, ${cY}px, 0px)`;
   }
 
