@@ -243,9 +243,11 @@ return /******/ (function(modules) { // webpackBootstrap
 	  }, {
 	    key: 'componentWillReceiveProps',
 	    value: function componentWillReceiveProps(nextProps) {
+	      var _this2 = this;
+
 	      var newIndices = this.props.children.reduce(function (boxes, child) {
 	        if (!child.key || child.props === undefined) return boxes;
-	        return _extends({}, boxes, _defineProperty({}, child.key, 90 * child.props.index));
+	        return _extends({}, boxes, _defineProperty({}, child.key, 90 * child.props.index + _this2.props.offset));
 	      }, {});
 	      this.oldIndices = _extends({}, this.oldIndices, newIndices);
 	      this.setState({
@@ -255,10 +257,10 @@ return /******/ (function(modules) { // webpackBootstrap
 	  }, {
 	    key: 'prepareNextChildren',
 	    value: function prepareNextChildren(nextChildren) {
-	      var _this2 = this;
+	      var _this3 = this;
 
 	      var updatedChildren = nextChildren.map(function (nextChild) {
-	        var child = _this2.state.children.find(function (_ref) {
+	        var child = _this3.state.children.find(function (_ref) {
 	          var key = _ref.key;
 	          return key === nextChild.key;
 	        });
@@ -275,7 +277,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	          return key === child.key;
 	        });
 
-	        if (!isLeaving || !_this2.props.leaveAnimation) return;
+	        if (!isLeaving || !_this3.props.leaveAnimation) return;
 
 	        var nextChild = _extends({}, child, { leaving: true });
 	        var nextChildIndex = index + numOfChildrenLeaving;
@@ -289,7 +291,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	  }, {
 	    key: 'calculateAndAnimateChildren',
 	    value: function calculateAndAnimateChildren() {
-	      var _this3 = this;
+	      var _this4 = this;
 
 	      if (this.isAnimationDisabled() || !transitionEnd) {
 	        return this.setState({ children: this.props.children });
@@ -298,13 +300,13 @@ return /******/ (function(modules) { // webpackBootstrap
 	      var dynamicChildren = this.state.children.filter(this.doesChildNeedToBeAnimated);
 
 	      this.domStyles = dynamicChildren.reduce(function (memo, child) {
-	        memo[child.key] = _this3.computeInitialStyles(child);
+	        memo[child.key] = _this4.computeInitialStyles(child);
 	        return memo;
 	      }, {});
 
 	      dynamicChildren.forEach(function (child, index) {
-	        _this3.addChildToAnimationsList(child);
-	        _this3.runAnimation(child, index);
+	        _this4.addChildToAnimationsList(child);
+	        _this4.runAnimation(child, index);
 	      });
 
 	      if (this.props.onStartAll) {
@@ -318,13 +320,13 @@ return /******/ (function(modules) { // webpackBootstrap
 	      if (child.entering) {
 	        if (this.props.enterAnimation) {
 	          style = _extends({}, style, this.props.enterAnimation.from, {
-	            transform: 'translate3d(0px, ' + 90 * child.props.index + 'px, 0px)' + ' ' + (this.props.enterAnimation.from.tranform || '')
+	            transform: 'translate3d(0px, ' + (90 * child.props.index + this.props.offset) + 'px, 0px)' + ' ' + (this.props.enterAnimation.from.tranform || '')
 	          });
 	        }
 	      } else if (child.leaving) {
 	        if (this.props.leaveAnimation) {
 	          style = _extends({}, style, this.props.leaveAnimation.from, {
-	            transform: 'translate3d(0px, ' + 90 * child.props.index + 'px, 0px)' + ' ' + (this.props.leaveAnimation.from.tranform || '')
+	            transform: 'translate3d(0px, ' + (90 * child.props.index + this.props.offset) + 'px, 0px)' + ' ' + (this.props.leaveAnimation.from.tranform || '')
 	          });
 	        }
 	      } else {
@@ -363,7 +365,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	  }, {
 	    key: 'runAnimation',
 	    value: function runAnimation(child, n) {
-	      var _this4 = this;
+	      var _this5 = this;
 
 	      var domNode = _reactDom2.default.findDOMNode(this.refs[child.key]);
 	      var styles = this.domStyles[child.key] || {};
@@ -373,18 +375,18 @@ return /******/ (function(modules) { // webpackBootstrap
 	      requestAnimationFrame(function () {
 	        requestAnimationFrame(function () {
 	          styles = {
-	            transition: _this4.createTransitionString(n),
+	            transition: _this5.createTransitionString(n),
 	            transform: styles.transform || '',
 	            opacity: ''
 	          };
 
-	          if (child.entering && _this4.props.enterAnimation) {
-	            styles = _extends({}, styles, _this4.props.enterAnimation.to, {
-	              transform: styles.transform + ' ' + (_this4.props.enterAnimation.to.tranform || '')
+	          if (child.entering && _this5.props.enterAnimation) {
+	            styles = _extends({}, styles, _this5.props.enterAnimation.to, {
+	              transform: styles.transform + ' ' + (_this5.props.enterAnimation.to.tranform || '')
 	            });
-	          } else if (child.leaving && _this4.props.leaveAnimation) {
-	            styles = _extends({}, styles, _this4.props.leaveAnimation.to, {
-	              transform: styles.transform + ' ' + (_this4.props.leaveAnimation.to.tranform || '')
+	          } else if (child.leaving && _this5.props.leaveAnimation) {
+	            styles = _extends({}, styles, _this5.props.leaveAnimation.to, {
+	              transform: styles.transform + ' ' + (_this5.props.leaveAnimation.to.tranform || '')
 	            });
 	          }
 
@@ -396,14 +398,14 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	      setTimeout(function () {
 	        domNode.style.transition = '';
-	        _this4.triggerFinishHooks(child, domNode);
+	        _this5.triggerFinishHooks(child, domNode);
 	      }, n * this.props.staggerDurationBy + this.props.duration);
 	    }
 	  }, {
 	    key: 'getPositionTranslation',
 	    value: function getPositionTranslation(child) {
 	      var oY = this.oldIndices[child.key] || 0;
-	      var cY = 90 * child.props.index;
+	      var cY = 90 * child.props.index + this.props.offset;
 	      return 'translate3d(0px, ' + cY + 'px, 0px)';
 	    }
 	  }, {
@@ -428,7 +430,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	  }, {
 	    key: 'triggerFinishHooks',
 	    value: function triggerFinishHooks(child, domNode) {
-	      var _this5 = this;
+	      var _this6 = this;
 
 	      if (this.props.onFinish) this.props.onFinish(child, domNode);
 
@@ -451,8 +453,8 @@ return /******/ (function(modules) { // webpackBootstrap
 	        });
 	        this.oldIndices = {};
 	        this.setState({ children: nextChildren }, function () {
-	          if (typeof _this5.props.onFinishAll === 'function') {
-	            _this5.props.onFinishAll(_this5.childrenToAnimate.elements, _this5.childrenToAnimate.domNodes);
+	          if (typeof _this6.props.onFinishAll === 'function') {
+	            _this6.props.onFinishAll(_this6.childrenToAnimate.elements, _this6.childrenToAnimate.domNodes);
 	          }
 	        });
 	      }
@@ -731,6 +733,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	    return FlipMovePropConverter;
 	  }(_react.Component), _class.propTypes = {
+	    offset: _react.PropTypes.number,
 	    children: _react.PropTypes.oneOfType([_react.PropTypes.array, _react.PropTypes.object]),
 	    easing: _react.PropTypes.string,
 	    duration: _react.PropTypes.oneOfType([_react.PropTypes.string, _react.PropTypes.number]),
@@ -747,6 +750,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	    leaveAnimation: _react.PropTypes.oneOfType([_react.PropTypes.string, _react.PropTypes.bool, _react.PropTypes.object]),
 	    getPosition: _react.PropTypes.func
 	  }, _class.defaultProps = {
+	    offset: 0,
 	    easing: 'ease-in-out',
 	    duration: 350,
 	    delay: 0,
